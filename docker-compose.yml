@@ -191,6 +191,7 @@ services:
       - node-red
       - influxdb
       - mqtts
+      - pgadmin
 
   node-red:
     restart: unless-stopped
@@ -206,9 +207,10 @@ services:
       - "${IOT_DASHBOARD_DATA}node-red:/data"
     environment:
       TZ: "${IOT_DASHBOARD_TIMEZONE:-GMT}"
-    # nodered opens ports on influxdb and postfix so it needs to be able to talk to it.
+    # nodered opens ports on influxdb, timescaledb and postfix so it needs to be able to talk to it.
     links:
       - influxdb
+      - timescaledb
       - postfix
 
   mqtts:
@@ -260,6 +262,31 @@ services:
       SOURCE_NAME: "${IOT_DASHBOARD_CERTBOT_FQDN}"
       S3_BUCKET_INFLUXDB: "${IOT_DASHBOARD_AWS_S3_BUCKET_INFLUXDB:-.}"
 
+  timescaledb:
+    restart: unless-stopped
+    image: timescale/timescaledb:${IOT_DASHBOARD_TIMESCALEDB_VERSION:-latest-pg12}
+    environment:
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: "${IOT_DASHBOARD_TIMESCALEDB_ADMIN_PASSWORD:-!notset}"
+      POSTGRES_DB: "${IOT_DASHBOARD_TIMESCALEDB_INITIAL_DATABASE_NAME:-demo}"
+    volumes:
+      - "${IOT_DASHBOARD_DATA}timescaledb:/var/lib/postgresql/data"
+
+  pgadmin:
+    restart: unless-stopped
+    image: biarms/pgadmin4:${IOT_DASHBOARD_TIMESCALEDB_VERSION:-latest}
+    links:
+      - timescaledb
+      - postfix
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "${IOT_DASHBOARD_PGADMIN_EMAIL:-!notset}"
+      PGADMIN_DEFAULT_PASSWORD: "${IOT_DASHBOARD_PGADMIN_PASSWORD:-!notset}"
+      PGADMIN_DISABLE_POSTFIX: "false"
+      PGADMIN_CONFIG_MAIL_SERVER: "postfix"
+      PGADMIN_CONFIG_SECURITY_EMAIL_SENDER: "${IOT_DASHBOARD_PGADMIN_SMTP_FROM_ADDRESS:-pgadmin@localhost}"
+    volumes:
+      - "${IOT_DASHBOARD_DATA}pgadmin:/var/lib/pgadmin"
+
   grafana:
     restart: unless-stopped
     image: grafana/grafana:${IOT_DASHBOARD_GRAFANA_VERSION:-latest}
@@ -279,9 +306,10 @@ services:
       GF_LOG_LEVEL: "${IOT_DASHBOARD_GRAFANA_LOG_LEVEL:-info}"
       GF_INSTALL_PLUGINS: "${IOT_DASHBOARD_GRAFANA_INSTALL_PLUGINS:-grafana-worldmap-panel}"
       GF_USERS_ALLOW_SIGN_UP: "${IOT_DASHBOARD_GRAFANA_USERS_ALLOW_SIGN_UP:-false}"
-    # grafana opens ports on influxdb and postfix, so it needs to be able to talk to it.
+    # grafana opens ports on influxdb, timescaledb and postfix, so it needs to be able to talk to it.
     links:
       - influxdb
+      - timescaledb
       - postfix
 
   postfix:
