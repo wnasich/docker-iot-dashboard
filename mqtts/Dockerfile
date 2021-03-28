@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
 # passing arguments to map letsencrypt certs
 ARG ssl_cert
 
-# Linking letsencrypt certiifcates to mosquitto conf
+# Linking letsencrypt certificates to mosquitto conf
 RUN ln -sf /etc/letsencrypt/live/${ssl_cert}/cert.pem /etc/mosquitto/cert.pem
 RUN ln -sf /etc/letsencrypt/live/${ssl_cert}/chain.pem /etc/mosquitto/chain.pem
 RUN ln -sf /etc/letsencrypt/live/${ssl_cert}/privkey.pem /etc/mosquitto/privkey.pem
